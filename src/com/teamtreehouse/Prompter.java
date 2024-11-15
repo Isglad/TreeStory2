@@ -11,36 +11,50 @@ import java.util.Set;
 
 
 public class Prompter {
-    private BufferedReader mReader;
+    private final BufferedReader mReader;
+    private final Set<String> mCensoredWords;
 
     public Prompter() {
         mReader = new BufferedReader(new InputStreamReader(System.in));
+        mCensoredWords = new HashSet<>();
         loadCensoredWords();
     }
 
     private void loadCensoredWords() {
-        Set<String> censoredWords = new HashSet<String>();
         Path file = Paths.get("resources", "censored_words.txt");
+        System.out.println("File path: " + file.toAbsolutePath());
         List<String> words = null;
         try {
             words = Files.readAllLines(file);
+            if (words != null) {
+                mCensoredWords.addAll(words);
+            } else {
+                System.out.println("No words were loaded into censorWords, please check the file!");
+            }
+//            System.out.println("Censored words loaded: " + mCensoredWords); // debug: check loaded words
         } catch (IOException e) {
             System.out.println("Couldn't load censored words");
             e.printStackTrace();
         }
-        censoredWords.addAll(words);
+        if (mCensoredWords != null) {
+            assert words != null;
+            mCensoredWords.addAll(words);
+        }
     }
 
     public void run(Template tmpl) {
         List<String> results = null;
         try {
             results = promptForWords(tmpl);
+            System.out.println("User inputs collected: " + results);
         } catch (IOException e) {
             System.out.println("There was a problem prompting for words");
             e.printStackTrace();
             System.exit(0);
         }
         // TODO:csd - Print out the results that were gathered here by rendering the template
+        String renderTemplate = tmpl.render(results);
+        System.out.println(renderTemplate);
     }
 
     /**
@@ -68,6 +82,20 @@ public class Prompter {
      */
     public String promptForWord(String phrase) {
         // TODO:csd - Prompt the user for the response to the phrase, make sure the word is censored, loop until you get a good response.
-        return "";
+        String word = null;
+        while (true) {
+            System.out.printf("Please provide a %s: ", phrase);
+            try{
+                word = mReader.readLine();
+                if (mCensoredWords.contains(word)) {
+                    System.out.println("The word you entered is not allowed. Please try again.");
+                } else {
+                    break; // valid word provided, exit the loop
+                }
+            } catch (IOException e) {
+                System.out.println("Error reading input. Please try again.");
+            }
+        }
+        return word;
     }
 }
